@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import TypedDict, List, Annotated, Literal
+from typing import TypedDict, List, Annotated, Literal, Optional
 
 class Task(BaseModel):
     id: int
@@ -20,3 +20,19 @@ class Plan(BaseModel):
     blog_kind: Literal["explainer", "tutorial", "news_roundup", "comparison", "system_design"] = "explainer"
     constraints: List[str] = Field(default_factory=list)
     tasks: List[Task] = Field(default_factory=list, description="Specific requirements or restrictions the content must follow, such as word limits, topics to avoid, formatting rules, or sources to use.")
+
+class EvidenceItem(BaseModel):
+    title: str
+    url: str
+    published_at: Optional[str] = None
+    snippet: Optional[str] = None
+    source: Optional[str] = None
+
+class EvidencePack[BaseModel]:
+    evidence: List[EvidenceItem] = Field(default_factory=list)
+
+class RouterDecision(BaseModel):
+    needs_research: bool
+    mode: Literal['closed_booke', 'hybrid', 'open_book']
+    queries: List[str] = Field(default_factory= list)
+

@@ -1,14 +1,14 @@
-# from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 from langchain_groq import ChatGroq
 from langchain_core.messages import BaseMessage, SystemMessage, AIMessage, HumanMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langchain_community.tools.tavily_search import TavilySearchResults
 from langgraph.types import Send
 from dotenv import load_dotenv
 from typing import TypedDict, Annotated, List
 # import sqlite3
-from schema import Plan, Task
+from schema import Plan, Task, EvidenceItem, EvidencePack, RouterDecision
 import operator
 from pathlib import Path
 import re
@@ -20,12 +20,113 @@ llm = ChatGroq(
 )
 
 class State(TypedDict):
-    # message: Annotated[list[BaseMessage], add_messages]
     topic: str
+    needs_research: bool
+    mode: str
+    queries: List[str]
+    evidence: List[EvidenceItem]
     task: List[Task]
     plan: Plan
     section: Annotated[List[str], operator.add]
     final: str
+
+def router(state: State) -> dict:
+
+    topic = state['topic']
+    decider = llm.with_structured_output(RouterDecision)
+    prompt = [
+        SystemMessage(
+            content= """You are a routing module for a technical blog planner.
+
+Decide whether web research is needed BEFORE planning.
+
+Modes:
+- closed_book (needs_research=false):
+  Evergreen topics where correctness does not depend on recent facts (concepts, fundamentals).
+- hybrid (needs_research=true):
+  Mostly evergreen but needs up-to-date examples/tools/models to be useful.
+- open_book (needs_research=true):
+  Mostly volatile: weekly roundups, "this week", "latest", rankings, pricing, policy/regulation.
+
+If needs_research=true:
+- Output 3–10 high-signal queries.
+- Queries should be scoped and specific (avoid generic queries like just "AI" or "LLM").
+- If user asked for "last week/this week/latest", reflect that constraint IN THE QUERIES.
+"""
+        ),
+        HumanMessage(
+            content=f"Topic: {topic}"
+        )
+    ]
+    decision = decider.invoke(prompt)
+    return{
+        "needs_research": decision.needs_research,
+        "mode": decision.mode,
+        "queries": decision.queries
+    }
+
+def route_next(state: State) -> str:
+    return "research" if state["needs_research"] else "orchestrator"
+
+def _tavily_search(query:str, max_results: int = 5) -> List[dict]:
+    tool = TavilySearchResults(max_results=max_results)
+    results = tool.invoke({'query': query})
+
+    normalized: List[dict] = []
+    for r in results or []:
+        normalized.append(
+            {
+                "title": r.get("title") or "",
+                "url": r.get("url") or "",
+                "snippet": r.get("content") or r.get("snippet") or "",
+                "published_at": r.get("published_date") or r.get("published_at"),
+                "source": r.get("source")
+            }
+        )
+    return normalized
+
+def research(state: State) -> dict:
+
+    queries = (state.get('queries') or [])
+    max_results = 6
+    raw_results: List[dict] = []
+
+    for q in queries:
+        raw_results.extend(_tavily_search(q, max_results=max_results))
+
+    if not raw_results:
+        return {"evidence": []}
+
+    extractor = llm.with_structured_output(EvidencePack)
+    prompt = [
+        SystemMessage(
+            content= """You are a research synthesizer for technical writing.
+
+Given raw web search results, produce a deduplicated list of EvidenceItem objects.
+
+Rules:
+- Only include items with a non-empty url.
+- Prefer relevant + authoritative sources (company blogs, docs, reputable outlets).
+- If a published date is explicitly present in the result payload, keep it as YYYY-MM-DD.
+  If missing or unclear, set published_at=null. Do NOT guess.
+- Keep snippets short.
+- Deduplicate by URL.
+"""
+        ),
+        HumanMessage(
+            content=f"raw_results:\n{raw_results}"
+        )
+    ]
+
+    pack = extractor.invoke(prompt)
+
+    dedup = {}
+    for e in pack.evidence:
+        if e.url:
+            dedup[e.url] = e
+
+    return {'evidence': list(dedup.values())}
+
 
 def orchestrator(state: State) -> dict:
     planner = llm.with_structured_output(Plan)
@@ -148,16 +249,23 @@ def reducer(state: dict) -> dict:
 
     return {"final": final_md}
 
-# conn = sqlite3.connect(database='chatbot.db', check_same_thread=False)
-# checkpointer = SqliteSaver(conn=conn)
 
 graph = StateGraph(State)
 
+graph.add_node("router", router)
+graph.add_node("research", research)
 graph.add_node('orchestrator', orchestrator)
 graph.add_node('worker', worker)
 graph.add_node('reducer', reducer, defer=True)
 
-graph.add_edge(START, "orchestrator")
+graph.add_edge(START, 'router')
+graph.add_conditional_edges(
+    'router', route_next, {
+        'research': 'research',
+        "orchestrator": "orchestrator"
+    }
+)
+graph.add_edge("research", "orchestrator")
 graph.add_conditional_edges("orchestrator", fanout, ["worker"])
 graph.add_edge("worker", "reducer")
 graph.add_edge("reducer", END)
@@ -165,5 +273,5 @@ graph.add_edge("reducer", END)
 app = graph.compile()
 
 
-print(app.invoke({"topic": "operating systems"}))
+print(app.invoke({"topic": "future of neural networks"}))
 
