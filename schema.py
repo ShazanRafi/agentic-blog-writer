@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import TypedDict, List, Annotated, Literal, Optional
+from typing import List, Annotated, Literal, Optional
 
 class Task(BaseModel):
     id: int
@@ -7,7 +7,7 @@ class Task(BaseModel):
     brief: str = Field(..., description="What to cover")
     goal: str = Field(..., description="One sentence describing what the reader should do/understand.")
     bullets: List[str] = Field(..., min_length=3, max_length=6, description="3–5 concrete, non-overlapping subpoints to cover in this section.",)
-    target_words: int = Field(..., description="Target words count (120–550).")
+    target_words: int = Field(..., description="Target words count (120–250).")
     tags: List[str] = Field(default_factory=list)
     requires_research: bool = False
     requires_citations: bool = False
