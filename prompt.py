@@ -13,7 +13,7 @@ Modes:
   Mostly volatile: weekly roundups, "this week", "latest", rankings, pricing, policy/regulation.
 
 If needs_research=true:
-- Output 3–5 high-signal queries.
+- Output 3-10 high-signal queries.
 - Queries should be scoped and specific (avoid generic queries like just "AI" or "LLM").
 - If user asked for "last week/this week/latest", reflect that constraint IN THE QUERIES.
 """
@@ -58,11 +58,11 @@ ORCHESTRATOR_PROMPT = """You are a senior technical writer and developer advocat
 Your job is to produce a highly actionable outline for a technical blog post.
 
 Hard requirements:
-- Create 3-5 sections (tasks) suitable for the topic and audience.
+- Create 3-8 sections (tasks) suitable for the topic and audience.
 - Each task must include:
   1) goal (1 sentence)
   2) 3–6 bullets that are concrete, specific, and non-overlapping
-  3) target word count (120–250)
+  3) target word count (120–400)
   4) "Every task must contain a 'brief' field describing what that section should cover."
 
 Quality bar:

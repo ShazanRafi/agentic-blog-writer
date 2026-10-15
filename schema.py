@@ -6,8 +6,8 @@ class Task(BaseModel):
     title: str
     brief: str = Field(..., description="What to cover")
     goal: str = Field(..., description="One sentence describing what the reader should do/understand.")
-    bullets: List[str] = Field(..., min_length=3, max_length=6, description="3–5 concrete, non-overlapping subpoints to cover in this section.",)
-    target_words: int = Field(..., description="Target words count (120–250).")
+    bullets: List[str] = Field(..., min_length=3, max_length=6, description="3–6 concrete, non-overlapping subpoints to cover in this section.",)
+    target_words: int = Field(..., description="Target words count (120–400).")
     tags: List[str] = Field(default_factory=list)
     requires_research: bool = False
     requires_citations: bool = False
@@ -28,8 +28,9 @@ class EvidenceItem(BaseModel):
     snippet: Optional[str] = None
     source: Optional[str] = None
 
-class EvidencePack[BaseModel]:
+class EvidencePack(BaseModel):
     evidence: List[EvidenceItem] = Field(default_factory=list)
+
 
 class RouterDecision(BaseModel):
     needs_research: bool

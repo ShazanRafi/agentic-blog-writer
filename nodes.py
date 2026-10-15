@@ -2,7 +2,7 @@ from state import State
 from langchain_core.messages import SystemMessage, HumanMessage
 from schema import Plan, RouterDecision
 from langchain_community.tools.tavily_search import TavilySearchResults
-from llm import llm
+from llm import gpt_llm, qwen_llm
 from typing import List
 from langgraph.types import Send
 from schema import  EvidencePack
@@ -13,7 +13,7 @@ from prompt import ROUTER_PROMPT, RESEARCH_PROMPT, ORCHESTRATOR_PROMPT, WORKER_P
 def router(state: State) -> dict:
 
     topic = state['topic']
-    decider = llm.with_structured_output(RouterDecision)
+    decider = qwen_llm.with_structured_output(RouterDecision)
     prompt = [
         SystemMessage(
             content= ROUTER_PROMPT
@@ -32,7 +32,7 @@ def router(state: State) -> dict:
 def route_next(state: State) -> str:
     return "research" if state["needs_research"] else "orchestrator"
 
-def _tavily_search(query:str, max_results: int = 2) -> List[dict]:
+def _tavily_search(query:str, max_results: int = 5) -> List[dict]:
     tool = TavilySearchResults(max_results=max_results)
     results = tool.invoke({'query': query})
 
@@ -52,7 +52,7 @@ def _tavily_search(query:str, max_results: int = 2) -> List[dict]:
 def research(state: State) -> dict:
 
     queries = (state.get('queries') or [])
-    max_results = 1
+    max_results = 5
     raw_results: List[dict] = []
 
     for q in queries:
@@ -61,7 +61,7 @@ def research(state: State) -> dict:
     if not raw_results:
         return {"evidence": []}
 
-    extractor = llm.with_structured_output(EvidencePack, method="json_schema")
+    extractor = qwen_llm.with_structured_output(EvidencePack)
 
     prompt = [
         SystemMessage(
@@ -75,15 +75,15 @@ def research(state: State) -> dict:
     pack = extractor.invoke(prompt)
 
     dedup = {}
-    for e in pack['evidence']:
-        if e.get('url'):
-            dedup[e['url']] = e
+    for e in pack.evidence:
+        if e.url:
+            dedup[e.url] = e.model_dump()
 
     return {'evidence': list(dedup.values())}
 
 
 def orchestrator(state: State) -> dict:
-    planner = llm.with_structured_output(Plan, method="json_schema")
+    planner = gpt_llm.with_structured_output(Plan, method="json_schema")
     prompt = [SystemMessage(
         content=(
                 ORCHESTRATOR_PROMPT
@@ -126,7 +126,7 @@ def worker(payload: dict) -> dict:
     )
     ]
 
-    section_md = llm.invoke(prompt).content.strip()
+    section_md = gpt_llm.invoke(prompt).content.strip()
     print("WORKER GENERATED:", repr(section_md[:100]))
     return {"section": [section_md]}
 
