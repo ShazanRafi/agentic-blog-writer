@@ -15,5 +15,12 @@ class State(TypedDict):
     final: str
 
 class RAGState(TypedDict):
+    topic:str
     file_name: str
     docs: List[Document]
+    splitted_docs: List[Document]
+    embedded_chunk: List[Document]
+    usefulness: bool
+    reliability: str
+    extracted_information: List[str]
+    summary: str

@@ -37,3 +37,16 @@ class RouterDecision(BaseModel):
     mode: Literal['closed_booke', 'hybrid', 'open_book']
     queries: List[str] = Field(default_factory= list)
 
+class RetrievedDocumentIntegrity(BaseModel):
+
+    usefulness: bool = Field(
+        description="""Whether the document contains meaningful information relevant to the user's topic and useful for generating an informative, evidence-based blog. Return False if the document is irrelevant, mostly empty, spam, or lacks substantive information."""
+    )
+
+    reliability: Literal["Correct", "Ambiguous", "Incorrect"] = Field(
+        description="""Assess the document's factual reliability based on available evidence. Correct: the claims assessed are largely supported by credible evidence. Ambiguous: evidence is insufficient, claims are unclear, or the document contains conflicting information. Incorrect: substantial claims are contradicted by credible evidence. Do not assume that an unverified claim is automatically incorrect. If external verification is unavailable, acknowledge this uncertainty."""
+    )
+
+    extracted_information: List[str] = Field(
+        description="""Extract all significant information useful for generating a high-quality blog about the user's topic. Include: (1) key findings and main arguments, (2) specific facts and supporting evidence, (3) numerical statistics, percentages, measurements, and their context, (4) conclusions and insights presented by the author, (5) important examples, case studies, and comparisons, (6) limitations, assumptions, contradictions, and caveats, and (7) relevant dates, named entities, and definitions. Preserve exact numerical values and their units. Distinguish the author's claims from independently verified facts. Retain page numbers or source references when available. Avoid generic summaries, repetition, unsupported inferences, and information irrelevant to the user's topic. Do not invent details missing from the document."""
+    )

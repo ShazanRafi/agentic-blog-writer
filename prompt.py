@@ -116,3 +116,76 @@ Markdown style:
 - Use short paragraphs, bullet lists where helpful, and code fences for code.
 - Avoid fluff. Avoid marketing language.
 - If you include code, keep it focused on the bullet being addressed."""
+
+
+#****************************************************DOCUMENT INTEGRITY NODE*************************************************
+DOCUMENT_INTEGRITY_PROMPT = """
+You are an expert document evaluator working for an AI-powered blog generation agent.
+
+Evaluate the provided document according to the user's research topic, assess its factual reliability, and extract information useful for generating an accurate, informative blog.
+
+USER'S TOPIC:
+{topic}
+
+DOCUMENT CONTENT:
+{document_content}
+
+INSTRUCTIONS:
+
+1. USEFULNESS
+Determine whether the document contains meaningful information relevant to the user's topic.
+- Return True if it contains useful facts, findings, statistics, explanations, or examples.
+- Return False if it is irrelevant, mostly empty, spam, nonsensical, or lacks substantive information.
+- Evaluate relevance independently of factual reliability. A relevant document can contain incorrect claims.
+
+2. RELIABILITY
+Choose exactly one classification:
+- Correct: The substantive claims assessed are largely supported by credible evidence.
+- Ambiguous: Evidence is insufficient, claims are unclear or conflicting, or factual accuracy cannot be determined confidently.
+- Incorrect: Substantial claims are contradicted by credible evidence or contain demonstrable factual errors.
+
+Do not assume an unverified claim is false. Do not treat citations, professional writing, or confident language as proof of accuracy. Do not claim to have verified information using sources you have not examined. Distinguish factual claims from opinions and acknowledge uncertainty where necessary.
+
+3. EXTRACTED INFORMATION
+Return a list of concise but informative strings containing the document's important information relevant to the user's topic, including:
+- Key findings, main arguments, and insights.
+- Important facts and supporting evidence.
+- Statistics, numerical values, units, and relevant context.
+- Conclusions, implications, and recommendations.
+- Examples, case studies, definitions, and technical explanations.
+- Limitations, assumptions, contradictions, questionable claims, and information requiring verification.
+- Relevant dates, entities, and other important details.
+
+Preserve exact numerical values and context. Include page numbers or source references when available. Distinguish the author's claims from independently verified facts. Avoid repetition, irrelevant details, unsupported inferences, and fabricated information. Flag questionable claims instead of presenting them as established facts.
+
+4. OUTPUT REQUIREMENTS
+Return output strictly according to the RetrievedDocumentIntegrity schema:
+- usefulness: Boolean.
+- reliability: Correct, Ambiguous, or Incorrect.
+- extracted_information: List of strings.
+
+If the document contains no useful, topic-relevant information, return an empty extracted_information list. Do not invent findings or add fields outside the schema. Return only the structured output, without additional commentary or Markdown.
+"""
+
+
+DOCUMENT_SUMMARY_PROMPT = """
+You are a research analyst working for a blog-generation agent.
+
+Your primary task is to summarize the provided extracted_information
+into a concise, coherent summary relevant to the user's research topic.
+
+Instructions:
+- Treat extracted_information as the primary source of content for the summary.
+- Use usefulness and reliability only as contextual guidance; do not summarize them.
+- Preserve important findings, facts, statistics, conclusions, and their context.
+- Combine related points and remove redundant information.
+- Preserve important limitations, contradictions, and uncertainties.
+- If usefulness is False, return a brief statement that the document
+  is not useful for the given topic.
+- If reliability is Ambiguous or Incorrect, do not present questionable
+  claims as verified facts. Preserve relevant uncertainty.
+- Do not introduce information that is absent from extracted_information.
+- Do not omit important findings merely to make the summary shorter.
+
+Return only the summarized information.
+"""

@@ -1,15 +1,14 @@
 from state import State
 from langchain_core.messages import SystemMessage, HumanMessage
-from schema import Plan, RouterDecision
+from schema import Plan, RouterDecision, EvidencePack, RetrievedDocumentIntegrity
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_chroma import Chroma
 from llm import gpt_llm, qwen_llm, embedding_llm
 from typing import List
 from langgraph.types import Send
-from schema import  EvidencePack
 from pathlib import Path
 import re
-from prompt import ROUTER_PROMPT, RESEARCH_PROMPT, ORCHESTRATOR_PROMPT, WORKER_PROMPT
+from prompt import ROUTER_PROMPT, RESEARCH_PROMPT, ORCHESTRATOR_PROMPT, WORKER_PROMPT, DOCUMENT_INTEGRITY_PROMPT, DOCUMENT_SUMMARY_PROMPT
 
 def router(state: State) -> dict:
 
@@ -179,8 +178,8 @@ def docs_splitter(state: RAGState)-> dict:
     docs = state['docs']
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=150,
+        chunk_size=1000,
+        chunk_overlap=200,
         add_start_index=True,
     )
 
@@ -188,20 +187,65 @@ def docs_splitter(state: RAGState)-> dict:
 
     return {'splitted_docs': chunks}
 
-
-def vector_store(state: RAGState)-> dict:
-
+def map(state:RAGState)-> dict:
+    topic = state['topic']
     splitted_docs = state['splitted_docs']
+    extractor = qwen_llm.with_structured_output(RetrievedDocumentIntegrity)
 
-    vstore = Chroma(
-        embedding_function=embedding_llm,
-        collection_name="research_docs",
-        persist_directory="./chroma_db"
-    )
+    document_integrity_prompt = [
+        SystemMessage(content=DOCUMENT_INTEGRITY_PROMPT),
+        HumanMessage(
+            content=f"""
+                User's research topic: {topic}
+                Document content:{splitted_docs}
+            """
+        )
+    ]
 
-    embedded_chunk = vstore.add_documents(splitted_docs)
+    result = extractor.invoke(document_integrity_prompt)
 
-    return {'embedded_chunk': embedded_chunk}
+    summarization_prompt = [
+        SystemMessage(
+            content=DOCUMENT_SUMMARY_PROMPT
+        ),
+        HumanMessage(
+            content=f"""
+                    Research topic: {state["topic"]}
+                    Document usefulness: {result.usefulness}
+                    Document reliability: {result.reliability}
+                    xtracted information:{result.extracted_information}
+            """
+        )
+    ]
+
+    summary = qwen_llm(summarization_prompt)
+
+    return {
+        'usefulness': result.usefulness,
+        'reliablity': result.reliablity,
+        'extracted_information': result.extracted_information,
+        'summary': summary
+    }
+
+
+    
+
+
+
+
+# def vector_store(state: RAGState)-> dict:
+
+#     splitted_docs = state['splitted_docs']
+
+#     vstore = Chroma(
+#         embedding_function=embedding_llm,
+#         collection_name="research_docs",
+#         persist_directory="./chroma_db"
+#     )
+
+#     embedded_chunk = vstore.add_documents(splitted_docs)
+
+#     return {'embedded_chunk': embedded_chunk}
 
 
 
