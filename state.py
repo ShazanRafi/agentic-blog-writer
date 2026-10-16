@@ -1,5 +1,6 @@
 from typing import TypedDict, Annotated, List
 from schema import Plan, Task, EvidenceItem
+from langchain_core.documents import Document
 import operator
 
 class State(TypedDict):
@@ -12,3 +13,7 @@ class State(TypedDict):
     plan: Plan
     section: Annotated[List[str], operator.add]
     final: str
+
+class RAGState(TypedDict):
+    file_name: str
+    docs: List[Document]

@@ -2,7 +2,8 @@ from state import State
 from langchain_core.messages import SystemMessage, HumanMessage
 from schema import Plan, RouterDecision
 from langchain_community.tools.tavily_search import TavilySearchResults
-from llm import gpt_llm, qwen_llm
+from langchain_chroma import Chroma
+from llm import gpt_llm, qwen_llm, embedding_llm
 from typing import List
 from langgraph.types import Send
 from schema import  EvidencePack
@@ -131,7 +132,7 @@ def worker(payload: dict) -> dict:
     return {"section": [section_md]}
 
     
-def reducer(state: dict) -> dict:
+def reducer(state: State) -> dict:
     title = state['plan'].blog_title
     body = "\n\n".join(state['section']).strip()
 
@@ -145,3 +146,64 @@ def reducer(state: dict) -> dict:
     output_path.write_text(final_md, encoding="utf-8")
 
     return {"final": final_md}
+
+
+#**********************************************************RAG-SUBGRAPH******************************************************
+
+from state import RAGState
+from langchain_community.document_loaders import TextLoader, PyPDFLoader, Docx2txtLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+def loader(state: RAGState)->dict:
+
+    filename = RAGState['file_name']
+
+    extension = Path(filename).suffix.lower()
+
+    if(extension == '.pdf'):
+        loader = PyPDFLoader(filename)
+    elif(extension == ".docx"):
+        loader = Docx2txtLoader(filename)
+    elif (extension == ".txt"):
+        loader = TextLoader(filename, encoding='utf-8')
+    else:
+        raise ValueError("Unsupported file format")
+
+    docs = loader.load()
+
+    return {'docs': docs}
+
+
+def docs_splitter(state: RAGState)-> dict:
+
+    docs = state['docs']
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=150,
+        add_start_index=True,
+    )
+
+    chunks = text_splitter.split_documents(docs)
+
+    return {'splitted_docs': chunks}
+
+
+def vector_store(state: RAGState)-> dict:
+
+    splitted_docs = state['splitted_docs']
+
+    vstore = Chroma(
+        embedding_function=embedding_llm,
+        collection_name="research_docs",
+        persist_directory="./chroma_db"
+    )
+
+    embedded_chunk = vstore.add_documents(splitted_docs)
+
+    return {'embedded_chunk': embedded_chunk}
+
+
+
+
+

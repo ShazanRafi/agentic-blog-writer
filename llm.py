@@ -1,5 +1,6 @@
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,4 +12,8 @@ gpt_llm = ChatGroq(
 
 qwen_llm = ChatOllama(
     model="qwen3:8b",
+)
+
+embedding_llm = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/all-MiniLM-L6-v2"
 )
