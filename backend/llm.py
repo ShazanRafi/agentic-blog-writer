@@ -6,7 +6,7 @@ load_dotenv()
 
 gpt_llm = ChatGroq(
     model="openai/gpt-oss-20b",
-    max_tokens=3000
+    max_tokens=2000
 )
 
 qwen_llm = ChatOllama(

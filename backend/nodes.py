@@ -166,13 +166,16 @@ def worker(payload: dict) -> dict:
     ]
 
     section_md = gpt_llm.invoke(prompt).content.strip()
+
     print("WORKER GENERATED:", repr(section_md[:100]))
-    return {"section": [section_md]}
+
+    return {"section": [{"id": task.id, "title": task.title, "md": section_md}]}
 
     
 def reducer(state: State) -> dict:
     title = state['plan'].blog_title
-    body = "\n\n".join(state['section']).strip()
+    sections = sorted(state['section'], key=lambda s: s['id'])
+    body = "\n\n".join(s['md'] for s in sections).strip()
 
     final_md = f"# {title}\n\n{body}\n"
 
@@ -257,7 +260,7 @@ def map(state:RAGState)-> dict:
         )
     ]
 
-    summary = qwen_llm.invoke(summarization_prompt)
+    summary = qwen_llm.invoke(summarization_prompt).content
 
     return {
         'usefulness': result.usefulness,
