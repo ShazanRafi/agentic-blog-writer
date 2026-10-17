@@ -24,7 +24,12 @@ graph.add_node('orchestrator', orchestrator)
 graph.add_node('worker', worker)
 graph.add_node('reducer', reducer, defer=True)
 
-graph.add_edge(START, 'rag')
+graph.add_conditional_edges(
+    START, route_to_rag, {
+        'rag': 'rag',
+        'router': 'router'
+    }
+)
 graph.add_edge('rag', 'router')
 graph.add_conditional_edges(
     'router', route_next, {
@@ -40,8 +45,34 @@ graph.add_edge("reducer", END)
 app = graph.compile()
 
 
+if __name__ == "__main__":
+    result = app.invoke({
+        "topic": "future of neural networks",
+        "file_name": ""
+    })
 
+    print("\n--- ROUTER INSIGHTS ---")
+    print("Research mode:", result.get("mode"))
+    print("Research needed:", result.get("needs_research"))
+    print("Queries:", result.get("queries"))
 
+    print("\n--- RESEARCH INSIGHTS ---")
+    print("Evidence:", result.get("evidence"))
 
+    print("\n--- ORCHESTRATOR PLAN ---")
+    plan = result.get("plan")
 
-# print(app.invoke({"topic": "future of neural networks"}))
+    if plan:
+        print("Blog title:", plan.blog_title)
+        print("Audience:", plan.audience)
+        print("Tone:", plan.tone)
+        print("Blog type:", plan.blog_kind)
+
+        for task in plan.tasks:
+            print(f"\nSection {task.id}: {task.title}")
+            print("Goal:", task.goal)
+            print("Target words:", task.target_words)
+            print("Bullets:", task.bullets)
+
+    print("\n--- FINAL BLOG ---")
+    print(result.get("final", "No blog generated."))

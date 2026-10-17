@@ -13,6 +13,10 @@ class State(TypedDict):
     plan: Plan
     section: Annotated[List[str], operator.add]
     final: str
+    usefulness: bool
+    reliability: str
+    summary: str
+    file_name: str
 
 class RAGState(TypedDict):
     topic:str

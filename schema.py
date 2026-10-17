@@ -7,7 +7,7 @@ class Task(BaseModel):
     brief: str = Field(..., description="What to cover")
     goal: str = Field(..., description="One sentence describing what the reader should do/understand.")
     bullets: List[str] = Field(..., min_length=3, max_length=6, description="3–6 concrete, non-overlapping subpoints to cover in this section.",)
-    target_words: int = Field(..., description="Target words count (120–400).")
+    target_words: int = Field(..., description="Target words count (120–300).")
     tags: List[str] = Field(default_factory=list)
     requires_research: bool = False
     requires_citations: bool = False
@@ -19,7 +19,7 @@ class Plan(BaseModel):
     tone: str = Field (description = "The writing style and mood of the content, such as formal, conversational, professional, friendly, or persuasive.")
     blog_kind: Literal["explainer", "tutorial", "news_roundup", "comparison", "system_design"] = "explainer"
     constraints: List[str] = Field(default_factory=list)
-    tasks: List[Task] = Field(default_factory=list, description="Specific requirements or restrictions the content must follow, such as word limits, topics to avoid, formatting rules, or sources to use.")
+    tasks: List[Task] = Field(default_factory=list,min_length=3,max_length=5, description="Specific requirements or restrictions the content must follow, such as word limits, topics to avoid, formatting rules, or sources to use.")
 
 class EvidenceItem(BaseModel):
     title: str
