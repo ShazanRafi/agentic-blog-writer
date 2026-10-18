@@ -204,9 +204,17 @@ def safe_filename(title: str) -> str:
     return (cleaned.lower().replace(" ", "_") or "blog") + ".md"
 
 
+# def to_text(value) -> str:
+#     """LangChain messages carry text in .content; plain strings pass through."""
+#     return str(getattr(value, "content", value) or "")
+
 def to_text(value) -> str:
-    """LangChain messages carry text in .content; plain strings pass through."""
-    return str(getattr(value, "content", value) or "")
+    content = getattr(value, "content", value)
+    if isinstance(content, list):
+        return "".join(
+            b.get("text", "") if isinstance(b, dict) else str(b) for b in content
+        )
+    return str(content or "")
 
 
 def normalize_section(item, position: int) -> dict:
@@ -300,6 +308,9 @@ def show_sources(evidence: list):
 
 
 def show_plan(plan):
+    thesis = getattr(plan, "thesis", "")
+    if thesis:
+        st.markdown(f"**Thesis:** {thesis}")
     st.markdown(
         f"**Audience:** {plan.audience}  \n**Tone:** {plan.tone}  \n**Type:** {plan.blog_kind}"
     )
@@ -313,6 +324,11 @@ def show_plan(plan):
             st.markdown(f"**Brief:** {task.brief}")
             for b in task.bullets:
                 st.markdown(f"- {b}")
+            doc_points = getattr(task, "doc_points", [])
+            if doc_points:
+                st.markdown("**Uses from your document**")
+                for d in doc_points:
+                    st.markdown(f"- {d}")
 
 
 # ------------------------------------------------------------------ background job

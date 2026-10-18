@@ -11,12 +11,14 @@ class State(TypedDict):
     evidence: List[EvidenceItem]
     task: List[Task]
     plan: Plan
-    section: Annotated[List[str], operator.add]
+    section: Annotated[List[dict], operator.add] 
     final: str
     usefulness: bool
     reliability: str
     summary: str
     file_name: str
+    extracted_information: List[str]
+    splitted_docs: List[Document] 
 
 class RAGState(TypedDict):
     topic:str

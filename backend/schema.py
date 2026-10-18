@@ -8,6 +8,8 @@ class Task(BaseModel):
     goal: str = Field(..., description="One sentence describing what the reader should do/understand.")
     bullets: List[str] = Field(..., min_length=3, max_length=6, description="3–6 concrete, non-overlapping subpoints to cover in this section.",)
     target_words: int = Field(..., description="Target words count (120–300).")
+    doc_points: List[str] = Field(default_factory=list, description="Specific items from the uploaded document's extracted information that this section must use, copied faithfully including numbers. Empty if there is no useful document or nothing fits.")
+    avoid: List[str] = Field(default_factory=list, description="Concepts that belong to other sections and must NOT be explained in detail here.")
     tags: List[str] = Field(default_factory=list)
     requires_research: bool = False
     requires_citations: bool = False
@@ -15,11 +17,16 @@ class Task(BaseModel):
 
 class Plan(BaseModel):
     blog_title: str = Field(..., description="title of the blog")
+    thesis: str = Field(..., description="One sentence stating the central argument or takeaway of the whole blog. Every section must support it.")
     audience: str = Field(description="The intended readers of the content, including their knowledge level and background.")
     tone: str = Field (description = "The writing style and mood of the content, such as formal, conversational, professional, friendly, or persuasive.")
     blog_kind: Literal["explainer", "tutorial", "news_roundup", "comparison", "system_design"] = "explainer"
-    constraints: List[str] = Field(default_factory=list)
-    tasks: List[Task] = Field(default_factory=list,min_length=3,max_length=5, description="Specific requirements or restrictions the content must follow, such as word limits, topics to avoid, formatting rules, or sources to use.")
+    constraints: List[str] = Field(default_factory=list, description="Specific requirements or restrictions the content must follow, such as word limits, topics to avoid, formatting rules, or sources to use.")
+    tasks: List[Task] = Field(default_factory=list,min_length=3,max_length=5, description="The 3–5 body sections of the blog, in reading order. Do not include an introduction or conclusion.")
+
+class Bookends(BaseModel):
+    introduction: str = Field(description="Introduction, 100-160 words, no heading.")
+    conclusion: str = Field(description="Conclusion, 80-140 words, no heading.")
 
 class EvidenceItem(BaseModel):
     title: str
@@ -34,7 +41,7 @@ class EvidencePack(BaseModel):
 
 class RouterDecision(BaseModel):
     needs_research: bool
-    mode: Literal['closed_booke', 'hybrid', 'open_book']
+    mode: Literal['closed_book', 'hybrid', 'open_book']
     queries: List[str] = Field(default_factory= list)
 
 class RetrievedDocumentIntegrity(BaseModel):
